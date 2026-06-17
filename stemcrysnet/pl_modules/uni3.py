@@ -5,7 +5,6 @@ from typing import Any
 import hydra
 import pytorch_lightning as pl
 
-from .AE_module import CSPDiffusion
 from .stem_crys_aligner import STEMCrysAligner
 from stemcrysnet.common.data_utils import lattice_params_to_matrix_torch
 

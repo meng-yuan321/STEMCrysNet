@@ -21,9 +21,7 @@ from tqdm import tqdm
 from lightning.pytorch.utilities import grad_norm
 
 from stemcrysnet.common.utils import PROJECT_ROOT
-from stemcrysnet.common.data_utils import (
-    EPSILON, cart_to_frac_coords, mard, lengths_angles_to_volume, lattice_params_to_matrix_torch,
-    frac_to_cart_coords, min_distance_sqr_pbc)
+from stemcrysnet.common.data_utils import (lattice_params_to_matrix_torch,)
 
 from .resnet import ModifiedResNet
 from .utils import RegressionHead
@@ -129,10 +127,7 @@ class BaseModule(pl.LightningModule):
         foreach = None
         grouped_grads: Dict[Tuple[torch.device, torch.dtype], List[List[torch.Tensor]]] \
         = _group_tensors_by_device_and_dtype([[g.detach() for g in grads]])  # type: ignore[assignment]
-        # print(grouped_grads.items())
-        # with open("/internfs/my/structure/stem2cif-3d-xtalnet/grouped_grads_debug.txt", "w") as f:
-        #     f.write(f"grouped_grads: {grouped_grads}\n")
-        # for ((device, _), [grads]) in grouped_grads.items():
+
         for (device_dtype, grads_list) in grouped_grads.items():
             device, dtype = device_dtype
             grads = grads_list[0]

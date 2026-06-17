@@ -33,12 +33,7 @@ class CrystLMDBDataset(Dataset):
         self.rotate1 = rotate1
         self.rotate2 = rotate2
         self.cached_data = LMDBDataset(path)
-        self.log_file = 'swap_log.txt'
-        # 训练开始前清空日志文件，避免旧数据干扰
-        # if os.path.exists(self.log_file):
-        #     os.remove(self.log_file)
-        # self.cut_off(400)
-
+        
     def cut_off(self, n):
         data_list = []
         for data in tqdm(self.cached_data):
@@ -202,11 +197,9 @@ class CrystLMDBDataset(Dataset):
         return image[top:bottom, left:right]
     
     def _crop_random_image(self, image, top, left, crop_size):
-        # 计算裁剪区域的右下角坐标
         bottom = top + crop_size[0]
         right = left + crop_size[1]
-        
-        # 裁剪图像
+
         return image[top:bottom, left:right]
 
     def _add_noise(self, image, peak, std):
@@ -226,14 +219,12 @@ class CrystLMDBDataset(Dataset):
         return image_poisson_gaussian
     
     def _add_poisson_noise(self, image_array, peak=30):
-        """添加泊松噪声"""
         # image_array = np.asarray(image).astype(np.float32)
         noisy_image_array = np.random.poisson(image_array / 255.0 * peak) / peak * 255.0
         noisy_image_array = np.clip(noisy_image_array, 0, 255).astype(np.uint8)
         return noisy_image_array
 
     def _add_gaussian_noise(self, image_array, mean=0, std=30):
-        """添加高斯噪声"""
         # image_array = np.asarray(image).astype(np.float32)
         noise = np.random.normal(mean, std, image_array.shape)
         noisy_image_array = image_array + noise
