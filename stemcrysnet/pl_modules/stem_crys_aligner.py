@@ -253,8 +253,8 @@ class STEMCrysAligner(BaseModule):
 
         loss_dict = {
             'loss' : total_loss,
-            'loss_CPCP_stem' : stem_loss,
-            'loss_CPCP_atom' : atom_loss
+            'loss_contrastive_stem' : stem_loss,
+            'loss_contrastive_atom' : atom_loss
         }
         return loss_dict
     
@@ -263,13 +263,13 @@ class STEMCrysAligner(BaseModule):
         output_dict = self(batch)
 
         loss = output_dict['loss']
-        loss_CPCP_stem = output_dict['loss_CPCP_stem']
-        loss_CPCP_atom = output_dict['loss_CPCP_atom']
+        loss_contrastive_stem = output_dict['loss_contrastive_stem']
+        loss_contrastive_atom = output_dict['loss_contrastive_atom']
 
         self.log_dict(
             {'train_loss': loss,
-            'train_loss_CPCP_stem': loss_CPCP_stem,
-            'train_loss_CPCP_atom': loss_CPCP_atom},
+            'train_loss_contrastive_stem': loss_contrastive_stem,
+            'train_loss_contrastive_atom': loss_contrastive_atom},
             on_step=True,
             on_epoch=True,
             prog_bar=True,
@@ -313,14 +313,14 @@ class STEMCrysAligner(BaseModule):
 
     def compute_stats(self, output_dict, prefix):
 
-        loss_CPCP_atom = output_dict['loss_CPCP_atom']
-        loss_CPCP_stem = output_dict['loss_CPCP_stem']
+        loss_contrastive_atom = output_dict['loss_contrastive_atom']
+        loss_contrastive_stem = output_dict['loss_contrastive_stem']
         loss = output_dict['loss']
 
         log_dict = {
             f'{prefix}_loss': loss,
-            f'{prefix}_loss_CPCP_stem': loss_CPCP_stem,
-            f'{prefix}_loss_CPCP_atom': loss_CPCP_atom
+            f'{prefix}_loss_contrastive_stem': loss_contrastive_stem,
+            f'{prefix}_loss_contrastive_atom': loss_contrastive_atom
         }
 
         return log_dict, loss

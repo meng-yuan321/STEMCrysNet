@@ -25,7 +25,7 @@ class UnifiedModule(pl.LightningModule):
         #         param.requires_grad = False
         #     print('crystal_encoder frozen')
 
-        # Instantiate CPCP module
+        # Instantiate contrastive module
         self.contrastive_module = hydra.utils.instantiate(self.hparams.contrastive_module, stem_encoder=self.stem_encoder, crystal_encoder=self.crystal_encoder)
 
         # Instantiate Diffusion module
