@@ -200,7 +200,7 @@ class CSPFlow(BaseModule):
 
 
     @torch.no_grad()
-    def sample(self, batch, diff_ratio = 1.0, step_lr = 5, infer_timesteps=200):
+    def sample(self, batch, step_lr = 5, infer_timesteps=200):
 
 
         batch_size = batch.num_graphs

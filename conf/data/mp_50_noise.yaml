@@ -1,0 +1,53 @@
+root_path: data/mp_50/lmdb_4_multi_axes
+# max_atoms: 100 
+
+train_max_epochs: 600
+early_stopping_patience: 100 # stop training if val_loss increases for N consecutive epochs
+two_stem: True
+switch: True
+# stem_pretrained: ''
+# crystal_encoder_pretrained: ''
+# crystal_decoder_pretrained: ''
+# ckpt_path: null
+
+datamodule:
+  _target_: stemcrysnet.pl_data.datamodule.CrystDataModule
+
+  datasets:
+    train:
+      _target_: stemcrysnet.pl_data.dataset.CrystLMDBDataset
+      name: stemcrysnet train
+      path: ${data.root_path}/train.lmdb
+      two_stem: ${data.two_stem}
+      switch: ${data.switch}
+      is_training: True
+      add_noise: True
+
+    val:
+      - _target_: stemcrysnet.pl_data.dataset.CrystLMDBDataset
+        name: stemcrysnet val
+        path: ${data.root_path}/val.lmdb
+        two_stem: ${data.two_stem}
+        switch: ${data.switch}
+        is_training: False
+        add_noise: True
+
+    test:
+      - _target_: stemcrysnet.pl_data.dataset.CrystLMDBDataset
+        name: stemcrysnet test
+        path: ${data.root_path}/test1000.lmdb
+        two_stem: ${data.two_stem}
+        switch: ${data.switch}
+        is_training: False
+        add_noise: True
+        
+
+  num_workers:
+    train: 32
+    val: 32
+    test: 32
+
+  batch_size:
+    train: 16
+    val: 8
+    test: 8

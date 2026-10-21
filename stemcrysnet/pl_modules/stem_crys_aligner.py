@@ -1,30 +1,19 @@
-import math, copy
-from argparse import Namespace
-import numpy as np
-import re
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
-from typing import Union, Iterable, List, Dict, Tuple, Optional, Any
+from typing import List, Dict, Tuple, Any
 
 import hydra
-import omegaconf
 import pytorch_lightning as pl
-from torch.optim.optimizer import Optimizer
 from torch_scatter import scatter
-from torch_scatter.composite import scatter_softmax
-from torch_geometric.utils import to_dense_adj, dense_to_sparse
+from torch_geometric.utils import dense_to_sparse
 from torch.utils._foreach_utils import _group_tensors_by_device_and_dtype, _has_foreach_support
-from tqdm import tqdm
-from lightning.pytorch.utilities import grad_norm
 
-from stemcrysnet.common.utils import PROJECT_ROOT
-from stemcrysnet.common.data_utils import (lattice_params_to_matrix_torch,)
+from stemcrysnet.common.data_utils import lattice_params_to_matrix_torch
 
-from .resnet import ModifiedResNet
-from .utils import RegressionHead
+
 from .cspnet import CSPLayer, SinusoidsEmbedding
 
 MAX_ATOMIC_NUM=100
@@ -127,7 +116,6 @@ class BaseModule(pl.LightningModule):
         foreach = None
         grouped_grads: Dict[Tuple[torch.device, torch.dtype], List[List[torch.Tensor]]] \
         = _group_tensors_by_device_and_dtype([[g.detach() for g in grads]])  # type: ignore[assignment]
-
         for (device_dtype, grads_list) in grouped_grads.items():
             device, dtype = device_dtype
             grads = grads_list[0]
@@ -145,57 +133,12 @@ class STEMCrysAligner(BaseModule):
         super().__init__(*args, **kwargs)
         self.stem_encoder = stem_encoder
         self.crystal_encoder = crystal_encoder
-        # self.stem_encoder = hydra.utils.instantiate(self.hparams.stem_encoder, _recursive_=False) #ModifiedResNet(Namespace())
-        # self.crystal_encoder = crystal_encoder if crystal_encoder is not None else hydra.utils.instantiate(self.hparams.crystal_encoder, _recursive_=False)
         self.logit_scale = nn.Parameter(torch.ones([1]))
-        # self.stack_view = self.hparams.stack_view
-        # self.multi_view = self.hparams.multi_view
-        # if self.multi_view:
-        #     self.fusion_method = self.hparams.fusion_method
-        #     if self.fusion_method == 'concat':
-        #         self.mlp = nn.Sequential(
-        #             nn.Linear(2*self.hparams.latent_dim, self.hparams.latent_dim),
-        #             nn.ReLU(),
-        #             nn.Linear(self.hparams.latent_dim, self.hparams.latent_dim)
-        #         )
-
-        # if 'crystal_encoder_pretrained' in self.hparams and self.hparams.crystal_encoder_pretrained:
-        #     self.load_state_dict(torch.load(self.hparams.crystal_encoder_pretrained)['state_dict'], strict=False)
-        #     print('succeffully load crystal encoder pretrained model')
-        # if 'freeze_crystal_encoder' in self.hparams and self.hparams.freeze_crystal_encoder:
-        #     for param in self.crystal_encoder.parameters():
-        #         param.requires_grad = False
-        #     print('freeze crystal encoder params')
-        
-        # if 'stem_pretrained' in self.hparams and self.hparams.stem_pretrained:
-        #     self.load_state_dict(torch.load(self.hparams.stem_pretrained)['state_dict'], strict=False)
-        #     print('succeffully load stem pretrained model')
-        # if 'freeze_stem_encoder' in self.hparams and self.hparams.freeze_stem_encoder:
-        #     for param in self.stem_encoder.parameters():
-        #         param.requires_grad = False
-        #     if self.multi_view and self.fusion_method == 'concat':
-        #         for param in self.mlp.parameters():
-        #             param.requires_grad = False
-        #     print('freeze stem encoder params')
+  
 
     def inference(self, batch):
         stem_feat = self.stem_encoder(batch)
-        # elif self.multi_view:
-        #     stem_feat1 = self.stem_encoder(batch.stem_img)
-        #     stem_feat2 = self.stem_encoder(batch.stem_img_yz)
-        #     if self.fusion_method == 'max':
-        #         stem_feat = torch.max(stem_feat1, stem_feat2)
-        #     elif self.fusion_method == 'concat':
-        #         concat_feat = torch.cat([stem_feat1, stem_feat2], dim=-1)
-        #         stem_feat = self.mlp(concat_feat)
-        #         # stem_feat = concat_feat
-        #     else:
-        #         raise ValueError(f"Unsupported fusion method: {self.fusion_method}")
-        # else:
-        #     stem_feat = self.stem_encoder(batch.stem_img)
-
         lattices = lattice_params_to_matrix_torch(batch.lengths, batch.angles)
-        # atom_feat = self.crystal_encoder(batch.atom_types, batch.frac_coords, lattices, batch.num_atoms, batch.batch)
         atom_feat = self.crystal_encoder(batch)
         results = {
             'ids': batch.id,
@@ -215,23 +158,8 @@ class STEMCrysAligner(BaseModule):
         
     def forward(self, batch):
         stem_feat = self.stem_encoder(batch)
-        # elif self.multi_view:
-        #     stem_feat1 = self.stem_encoder(batch.stem_img, 1) # (bsz*256, 256)
-        #     stem_feat2 = self.stem_encoder(batch.stem_img_yz, 1)
-        #     # 使用特征融合层融合特征
-        #     if self.fusion_method == 'max':
-        #         stem_feat = torch.max(stem_feat1, stem_feat2)
-        #     elif self.fusion_method == 'concat':
-        #         concat_feat = torch.cat([stem_feat1, stem_feat2], dim=-1)
-        #         stem_feat = self.mlp(concat_feat)
-        #         # stem_feat = concat_feat
-        #     else:
-        #         raise ValueError(f"Unsupported fusion method: {self.fusion_method}")
-        # else:
-        #     stem_feat = self.stem_encoder(batch.stem_img, 1)
         
         lattices = lattice_params_to_matrix_torch(batch.lengths, batch.angles)
-        # atom_feat = self.crystal_encoder(batch.atom_types, batch.frac_coords, lattices, batch.num_atoms, batch.batch) # 使用 torch_geometric.loader.DataLoader 创建数据加载器时，它会自动将每个 batch 中的多个 Data 对象合并为一个 Batch 对象，并自动添加 .batch 属性，是一个 shape 为 [num_nodes_in_batch] 的向量，表示每个节点属于哪个图
         atom_feat = self.crystal_encoder(batch) # 使用 torch_geometric.loader.DataLoader 创建数据加载器时，它会自动将每个 batch 中的多个 Data 对象合并为一个 Batch 对象，并自动添加 .batch 属性，是一个 shape 为 [num_nodes_in_batch] 的向量，表示每个节点属于哪个图
         
         stem_feat = F.normalize(stem_feat, dim=-1).float() # (bsz, latent_dim)

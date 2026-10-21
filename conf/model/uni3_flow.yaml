@@ -1,0 +1,33 @@
+_target_: stemcrysnet.pl_modules.uni3.UnifiedModule
+
+lambda_contrastive: 0.1
+lambda_self: 1.0
+lambda_cross: 1.0
+time_dim: 256
+latent_dim: 512
+timesteps: 1000
+two_stem: ${data.two_stem}
+self_module:
+  _target_: stemcrysnet.pl_modules.f_generator.CSPFlow
+  cost_coord: 100.0
+  cost_lattice: 1.0
+  timesteps: 1000
+  align: false
+  
+cross_module:
+  _target_: stemcrysnet.pl_modules.f_generator.CSPFlow
+  cost_coord: 100.0
+  cost_lattice: 1.0
+  timesteps: 1000
+  align: false
+
+contrastive_module:
+  _target_: stemcrysnet.pl_modules.stem_crys_aligner.STEMCrysAligner
+    
+
+defaults:
+  - crystal_encoder: default
+  - stem_encoder: resnet
+  - crystal_decoder: default
+  - beta_scheduler: cosine
+  - sigma_scheduler: wrapped

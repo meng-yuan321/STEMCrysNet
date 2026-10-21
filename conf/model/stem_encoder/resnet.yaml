@@ -1,0 +1,6 @@
+_target_: stemcrysnet.pl_modules.resnet.ModifiedResNet
+layers: [3,4,6,3]
+output_dim: ${model.latent_dim} # 512
+heads: 1
+input_resolution: 256
+width: 64

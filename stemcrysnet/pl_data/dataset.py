@@ -21,7 +21,7 @@ import random
 
 
 class CrystLMDBDataset(Dataset):
-    def __init__(self, name: ValueNode, path: ValueNode, two_stem: ValueNode, switch: ValueNode, is_training: ValueNode, add_noise: ValueNode, rotate1: ValueNode = True, rotate2: ValueNode = True,   
+    def __init__(self, name: ValueNode, path: ValueNode, two_stem: ValueNode, switch: ValueNode, is_training: ValueNode, add_noise: ValueNode,   
                  **kwargs):
         super().__init__()
         self.path = path
@@ -30,10 +30,9 @@ class CrystLMDBDataset(Dataset):
         self.switch = switch
         self.is_training = is_training
         self.add_noise = add_noise
-        self.rotate1 = rotate1
-        self.rotate2 = rotate2
         self.cached_data = LMDBDataset(path)
-        
+
+
     def cut_off(self, n):
         data_list = []
         for data in tqdm(self.cached_data):
@@ -48,9 +47,8 @@ class CrystLMDBDataset(Dataset):
         data_dict = self.cached_data[index]
 
         filename = data_dict['filename']
-        # 提取id
-        # id = 1
-        pattern = re.compile(r'[-_](\d+)')
+        # pattern = re.compile(r'[-_](\d+)')
+        pattern = re.compile(r'(\d+)$')
  
         match = pattern.search(filename)
         if match:
@@ -93,20 +91,20 @@ class CrystLMDBDataset(Dataset):
         ps = None
         if self.two_stem:
             if len(img.shape) == 3:
-                new_img = self._augment(img[0, :, :], rotate=self.rotate1, rotate90=True, ps=ps, top=top, left=left1, crop_size=crop_size)
+                new_img = self._augment(img[0, :, :], rotate=False, rotate90=True, ps=ps, top=top, left=left1, crop_size=crop_size)
                 if self.add_noise:
                     new_img = self._add_noise(new_img, peak, std)
                 new_img = self._normalize(new_img)
                 data.stem_img = torch.as_tensor(new_img) # （256，256）
 
-                new_img = self._augment(img[1, :, :], rotate=self.rotate2, rotate90=True, ps=ps, top=top, left=left2, crop_size=crop_size)
+                new_img = self._augment(img[1, :, :], rotate=False, rotate90=True, ps=ps, top=top, left=left2, crop_size=crop_size)
                 if self.add_noise:
                     new_img = self._add_noise(new_img, peak, std)
                 new_img = self._normalize(new_img)
                 data.stem_img_yz = torch.as_tensor(new_img)
 
                 
-                if self.switch and (index % 2 == 0): # 随机交换两个视角的位置
+                if self.switch and (index % 2 == 0): 
                     data.stem_img, data.stem_img_yz = data.stem_img_yz, data.stem_img
                     
                 # import matplotlib.pyplot as plt
@@ -117,7 +115,6 @@ class CrystLMDBDataset(Dataset):
                 raise ValueError(f"len(img.shape) != 3.")
         else:
             if len(img.shape) == 3:
-                # img = self._augment(img[0, :, :], rotate=True, ps=ps)
                 if self.switch and (index % 2 == 0):
                     img = self._augment(img[1, :, :], rotate=True, rotate90=False, ps=ps, crop_size=crop_size)
                 else:
@@ -140,9 +137,6 @@ class CrystLMDBDataset(Dataset):
         return (((image - image.min())/image.ptp()) * np.iinfo(np.uint8).max).astype(np.uint8) if image.ptp() != 0 else image.astype(np.uint8)
 
     def _augment(self, image, rotate, rotate90, ps=None, top=0, left=0, crop_size=(256,256)):
-        
-        # if ps is not None:
-        #     image = self._resize_image(image, 0.0075, ps)
         if rotate:
             angle = np.random.randint(0, 360)
             image = self._rotate_image(image, angle)
@@ -151,7 +145,7 @@ class CrystLMDBDataset(Dataset):
             if random.random() > 0.5:
                 image = np.fliplr(image)
         if rotate90:
-            image = np.rot90(image, 1) # 确保行是对应的，适配sttr
+            image = np.rot90(image, 1) # image rectification: make sure the rows are aligned
             if random.random() > 0.5:
                 image = np.fliplr(image)
         
@@ -197,9 +191,10 @@ class CrystLMDBDataset(Dataset):
         return image[top:bottom, left:right]
     
     def _crop_random_image(self, image, top, left, crop_size):
+        # calculate the bottom-right corner coordinates of the cropping region
         bottom = top + crop_size[0]
         right = left + crop_size[1]
-
+        
         return image[top:bottom, left:right]
 
     def _add_noise(self, image, peak, std):
@@ -207,15 +202,7 @@ class CrystLMDBDataset(Dataset):
         # image = gaussian_filter(image, sigma=sigma)
         
         image_poisson = self._add_poisson_noise(image, peak)
-        
         image_poisson_gaussian = self._add_gaussian_noise(image_poisson, std = std)
-        # optionally add scan-direction noise (random angle)
-        # if random.random() < 0.5:
-        #     try:
-        #         image_poisson_gaussian = self.add_scan_noise(image_poisson_gaussian)
-        #     except Exception:
-        #         # fallback to the gaussian-poisson result on any error
-        #         pass
         return image_poisson_gaussian
     
     def _add_poisson_noise(self, image_array, peak=30):

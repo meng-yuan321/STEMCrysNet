@@ -1,12 +1,7 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from typing import Any
 import hydra
 import pytorch_lightning as pl
-
-from .stem_crys_aligner import STEMCrysAligner
-from stemcrysnet.common.data_utils import lattice_params_to_matrix_torch
 
 class UnifiedModule(pl.LightningModule):
     def __init__(self, *args, **kwargs) -> None:

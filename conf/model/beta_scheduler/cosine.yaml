@@ -1,0 +1,3 @@
+_target_: stemcrysnet.pl_modules.utils.BetaScheduler
+timesteps: ${model.timesteps}
+scheduler_mode: cosine

@@ -1,0 +1,26 @@
+# log frequency
+# val_check_interval: 5
+progress_bar_refresh_rate: 1
+check_val_every_n_epoch: 5
+
+wandb:
+  name: ${expname}
+  project: stemcrysnet
+  entity: null
+  log_model: False
+  mode: 'offline' # 'online'
+  group: ${expname}
+  save_dir: ${oc.env:WANDB_DIR}/${expname}
+  # id: 'yosvngbt'
+  resume: 'allow' 
+
+csv:
+  name: ${expname}
+
+wandb_watch:
+  log: 'all'
+  log_freq: 500
+
+lr_monitor:
+  logging_interval: "step"
+  log_momentum: False
